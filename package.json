@@ -1,0 +1,19 @@
+{
+  "name": "betboard-server",
+  "version": "1.0.0",
+  "description": "Backend proxy that holds the Odds API key privately and serves cached live odds to the BetBoard app.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
