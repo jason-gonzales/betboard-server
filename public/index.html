@@ -683,6 +683,40 @@ function renderOddsTable(game){
     </div>`;
 }
 
+function winCount(form){ return (form.match(/W/g) || []).length; }
+
+function trendDirection(trendArr){
+  if(trendArr.length < 3) return "flat";
+  const early = trendArr.slice(0, Math.ceil(trendArr.length/2)).reduce((s,t)=>s+t.runsFor,0);
+  const late = trendArr.slice(-Math.ceil(trendArr.length/2)).reduce((s,t)=>s+t.runsFor,0);
+  if(late - early >= 2) return "up";
+  if(early - late >= 2) return "down";
+  return "flat";
+}
+
+// Builds a short, hedged lean from real form/record/scoring data only —
+// no fabricated stats. Meant as one input to weigh, not a pick.
+function computeLean(awayName, awayT, homeName, homeT){
+  const awayWins = winCount(awayT.form), homeWins = winCount(homeT.form);
+  const awayDir = trendDirection(awayT.trend), homeDir = trendDirection(homeT.trend);
+  const dirWord = d => d==="up" ? "trending up" : d==="down" ? "cooling off" : "holding steady";
+
+  if(awayWins===homeWins && awayDir===homeDir){
+    return `Records and scoring trends are close for both sides — recent form alone doesn't point either way here.`;
+  }
+  let favored, favWins, favDir, other, otherWins, otherDir;
+  if(awayWins !== homeWins){
+    [favored, favWins, favDir] = awayWins > homeWins ? [awayName, awayWins, awayDir] : [homeName, homeWins, homeDir];
+    [other, otherWins, otherDir] = awayWins > homeWins ? [homeName, homeWins, homeDir] : [awayName, awayWins, awayDir];
+  } else {
+    // records tied — let momentum break the tie
+    [favored, favWins, favDir] = awayDir==="up" && homeDir!=="up" ? [awayName, awayWins, awayDir] : [homeName, homeWins, homeDir];
+    [other, otherWins, otherDir] = favored===awayName ? [homeName, homeWins, homeDir] : [awayName, awayWins, awayDir];
+  }
+  const confidence = (favDir==="up" || favDir==="flat") && otherDir!=="up" ? "Mild lean" : "Slight lean, worth a second look";
+  return `${confidence} toward ${favored}: ${favWins}-${5-favWins} last 5 and ${dirWord(favDir)}, vs. ${other} at ${otherWins}-${5-otherWins} and ${dirWord(otherDir)}. Based on recent form only — not a full picture, and not betting advice.`;
+}
+
 function renderTrends(game){
   if(game.live){
     const awayT = state.teamTrends[game.away];
@@ -709,7 +743,10 @@ function renderTrends(game){
         <div class="form-line"><span>${game.home}</span>${renderFormDots(homeT.form)}<span>${homeT.record}</span></div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px;">Real results from MLB's Stats API — last 5 completed games for each team.</div>
       </div>
-      <div class="panel-box">${renderChart(chartGame)}</div>`;
+      <div class="panel-box">${renderChart(chartGame)}</div>
+      <div class="panel-box">
+        <div class="callout">🔥&nbsp;${computeLean(game.away, awayT, game.home, homeT)}</div>
+      </div>`;
   }
   return `
     <div class="panel-box">
