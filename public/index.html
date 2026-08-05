@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BetBoard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --ink:#12181F; --panel:#1B232D; --panel2:#212B36; --line:#2A343F;
+    --amber:#F5A623; --green:#4FAE7A; --red:#D65F5F;
+    --text:#EDEFF2; --muted:#8B96A3;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:#05070a; color:var(--text);
+    font-family:'Inter',sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:24px;
+  }
+
+  /* ---- Phone frame (desktop preview) ---- */
+  .phone{
+    width:390px; height:844px; background:#000; border-radius:52px;
+    padding:14px; box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 2px #2a2a2a inset;
+    position:relative;
+  }
+  .screen{
+    width:100%; height:100%; background:var(--ink); border-radius:38px;
+    overflow:hidden; position:relative; display:flex; flex-direction:column;
+  }
+  .notch{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:120px; height:28px; background:#000; border-radius:0 0 18px 18px; z-index:20;
+  }
+
+  /* ---- Status bar ---- */
+  .statusbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px 4px; font-size:14px; font-weight:600; flex-shrink:0;
+  }
+  .statusbar .icons{display:flex; align-items:center; gap:5px;}
+
+  /* ---- App bar ---- */
+  .appbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 18px 10px; flex-shrink:0;
+  }
+  .appbar h1{
+    font-family:'Oswald',sans-serif; font-weight:700; font-size:22px; margin:0; letter-spacing:.02em;
+  }
+  .appbar h1 span{color:var(--amber);}
+  .appbar .sub{font-size:11px; color:var(--muted); margin-top:1px;}
+  .icon-btn{
+    width:34px; height:34px; border-radius:50%; background:var(--panel);
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    color:var(--text); cursor:pointer; flex-shrink:0;
+  }
+  .icon-btn svg{transition:transform .5s;}
+  .icon-btn.spinning svg{transform:rotate(360deg);}
+  .back-row{display:flex; align-items:center; gap:10px; padding:6px 18px 4px; flex-shrink:0;}
+  .back-btn{
+    width:32px; height:32px; border-radius:50%; background:var(--panel); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; color:var(--text); cursor:pointer; flex-shrink:0;
+  }
+  .back-title{font-family:'Oswald',sans-serif; font-size:17px; font-weight:600;}
+  .back-time{font-size:11px; color:var(--muted);}
+
+  /* ---- Intro / value-prop overlay ---- */
+  .intro{
+    position:absolute; inset:0; z-index:50; background:var(--ink);
+    display:flex; flex-direction:column; justify-content:center;
+    padding:32px 26px; transition:opacity .3s ease, visibility .3s ease;
+  }
+  .intro.hidden{opacity:0; visibility:hidden; pointer-events:none;}
+  .intro-eyebrow{
+    font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber);
+    font-weight:700; margin-bottom:10px;
+  }
+  .intro h2{
+    font-family:'Oswald',sans-serif; font-size:26px; line-height:1.2; margin:0 0 10px;
+    color:var(--text); font-weight:700;
+  }
+  .intro h2 em{color:var(--amber); font-style:normal;}
+  .intro p.lead{font-size:14px; color:var(--muted); line-height:1.5; margin:0 0 22px;}
+  .intro-compare{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:4px; margin-bottom:22px;
+  }
+  .compare-row{
+    display:flex; align-items:center; gap:10px; padding:10px 10px;
+  }
+  .compare-row + .compare-row{border-top:1px solid var(--line);}
+  .compare-ico{
+    width:30px; height:30px; border-radius:9px; background:var(--ink); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .compare-text{font-size:12.5px; line-height:1.35;}
+  .compare-text strong{color:var(--text);}
+  .compare-text span{color:var(--muted); display:block;}
+  .intro-cta{
+    background:var(--amber); color:var(--ink); border:none; border-radius:12px;
+    font-family:'Oswald',sans-serif; font-weight:700; font-size:15px; letter-spacing:.02em;
+    padding:14px 0; width:100%; cursor:pointer;
+  }
+  .intro-skip{
+    text-align:center; font-size:12px; color:var(--muted); margin-top:12px; cursor:pointer;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+
+  /* ---- Banner (reinforces value prop after intro) ---- */
+  .banner{
+    margin:2px 18px 10px; background:linear-gradient(135deg,#22303d,#1B232D);
+    border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+    display:flex; align-items:center; gap:10px; flex-shrink:0;
+  }
+  .banner-txt{font-size:11.5px; line-height:1.35; color:var(--text);}
+  .banner-txt strong{color:var(--amber);}
+  .banner-close{
+    margin-left:auto; color:var(--muted); background:none; border:none; cursor:pointer;
+    font-size:16px; line-height:1; padding:2px 4px; flex-shrink:0;
+  }
+
+  /* ---- Data source badge ---- */
+  .data-source-row{padding:0 18px 8px; flex-shrink:0;}
+  .src-badge{
+    display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700;
+    letter-spacing:.03em; padding:3px 9px; border-radius:20px;
+  }
+  .src-badge.live{background:rgba(79,174,122,.15); color:var(--green); border:1px solid rgba(79,174,122,.4);}
+  .src-badge.demo{background:rgba(139,150,163,.12); color:var(--muted); border:1px solid var(--line);}
+  .src-dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+  .empty-state{
+    text-align:center; padding:30px 16px; color:var(--muted); font-size:13px; line-height:1.6;
+  }
+  .empty-state .ico{font-size:26px; margin-bottom:8px;}
+
+  /* ---- Segmented sport control ---- */
+  .segmented{
+    display:flex; background:var(--panel); border-radius:12px; padding:3px; margin:4px 18px 12px;
+    border:1px solid var(--line); flex-shrink:0;
+  }
+  .segmented button{
+    flex:1; border:none; background:none; padding:8px 0; border-radius:9px;
+    font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; letter-spacing:.03em;
+    color:var(--muted); cursor:pointer;
+  }
+  .segmented button.active{background:var(--amber); color:var(--ink);}
+
+  /* ---- Scroll area ---- */
+  .scroll{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 14px 14px;}
+  .scroll::-webkit-scrollbar{display:none;}
+
+  /* ---- Game card (list) ---- */
+  .gcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:14px 14px 12px; margin-bottom:10px; cursor:pointer;
+  }
+  .gcard:active{background:var(--panel2);}
+  .gcard-top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .gcard-matchup{font-family:'Oswald',sans-serif; font-size:16px; font-weight:600; letter-spacing:.01em;}
+  .gcard-matchup .at{color:var(--muted); font-weight:400;}
+  .gcard-time{font-size:11px; color:var(--muted); margin-top:2px;}
+  .chev-right{color:var(--muted); flex-shrink:0; margin-top:2px;}
+  .chip-row{display:flex; gap:6px; margin-top:10px;}
+  .chip{
+    flex:1; background:var(--ink); border-radius:9px; padding:6px 4px; text-align:center;
+  }
+  .chip .clbl{font-size:9px; text-transform:uppercase; color:var(--muted); letter-spacing:.02em;}
+  .chip .cval{font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700; color:var(--amber); margin-top:1px;}
+  .subline-row{display:flex; gap:16px; margin-top:8px; font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace;}
+
+  @keyframes flip{0%{opacity:.15; transform:translateY(-3px);} 100%{opacity:1; transform:translateY(0);}}
+  .flip{animation:flip .35s ease;}
+
+  /* ---- Detail: tabs ---- */
+  .dtabs{display:flex; gap:6px; padding:2px 18px 12px; flex-shrink:0;}
+  .dtab{
+    flex:1; font-family:'Oswald',sans-serif; font-size:11.5px; font-weight:600; letter-spacing:.01em;
+    padding:8px 2px; text-align:center; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel); color:var(--muted); cursor:pointer;
+  }
+  .dtab.active{background:var(--amber); color:var(--ink); border-color:var(--amber);}
+
+  table{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:12px;}
+  th{font-family:'Inter',sans-serif; font-weight:400; color:var(--muted); text-align:center; padding:5px 2px; font-size:10.5px;}
+  th:first-child{text-align:left;}
+  td{text-align:center; padding:6px 2px;}
+  td:first-child{text-align:left; color:var(--muted); font-family:'Inter',sans-serif; font-size:12px;}
+  .best{color:var(--amber) !important; font-weight:700;}
+
+  .panel-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px;}
+  .sec-label{
+    display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.03em; color:var(--muted); margin-bottom:8px; font-weight:600;
+  }
+  .row-line{display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; gap:8px;}
+  .row-line .k{color:var(--muted); flex-shrink:0;}
+  .row-line .v{text-align:right;}
+  .form-line{display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:5px; gap:6px;}
+  .form-dots{display:inline-flex; gap:3px;}
+  .form-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+  .callout{
+    margin-top:8px; background:var(--ink); border:1px solid var(--line); border-radius:10px;
+    padding:10px 11px; font-size:12.5px; display:flex; gap:8px; align-items:flex-start; line-height:1.4;
+  }
+  .h2h-row{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; margin-bottom:7px; line-height:1.35;}
+  .h2h-date{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted); flex-shrink:0; padding-top:1px;}
+  .inj-row{display:flex; align-items:flex-start; gap:8px; font-size:12.5px; margin-bottom:7px; line-height:1.35;}
+  .status-tag{
+    font-size:8.5px; padding:2px 6px; border-radius:5px; text-transform:uppercase; font-weight:700;
+    color:var(--ink); flex-shrink:0; margin-top:2px;
+  }
+  .chart-wrap{margin-top:2px;}
+  .chart-label{font-size:10.5px; color:var(--muted); display:block; margin-bottom:4px; font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+
+  /* ---- Screens (slide nav) ---- */
+  .screens-wrap{flex:1; position:relative; overflow:hidden; display:flex; flex-direction:column;}
+  .screen-list, .screen-detail{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    background:var(--ink); transition:transform .32s cubic-bezier(.4,0,.2,1);
+  }
+  .screen-detail{transform:translateX(100%);}
+  .screens-wrap.detail-open .screen-list{transform:translateX(-28%); filter:brightness(.6);}
+  .screens-wrap.detail-open .screen-detail{transform:translateX(0);}
+
+  /* ---- Bottom nav ---- */
+  .bottomnav{
+    display:flex; border-top:1px solid var(--line); background:var(--panel);
+    padding:8px 6px calc(env(safe-area-inset-bottom, 8px) + 4px); flex-shrink:0;
+  }
+  .navitem{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:4px 0; color:var(--muted); cursor:pointer; border:none; background:none; font-family:'Inter',sans-serif;
+  }
+  .navitem.active{color:var(--amber);}
+  .navitem .nlbl{font-size:10px; font-weight:600;}
+  .toast{
+    position:absolute; bottom:78px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--panel2); border:1px solid var(--line); color:var(--text); font-size:12px;
+    padding:9px 16px; border-radius:20px; opacity:0; pointer-events:none; transition:all .25s; white-space:nowrap; z-index:30;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .footnote{font-size:10px; color:var(--muted); line-height:1.5; padding:10px 4px 4px;}
+
+  /* On an actual phone, drop the bezel and go edge-to-edge */
+  @media (max-width:480px){
+    body{padding:0;}
+    .phone{width:100vw; height:100vh; border-radius:0; padding:0; box-shadow:none;}
+    .screen{border-radius:0;}
+    .notch{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="statusbar">
+      <span id="clock">9:41</span>
+      <div class="icons">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="6" width="3" height="5" rx="0.5"/><rect x="4.5" y="4" width="3" height="7" rx="0.5"/><rect x="9" y="2" width="3" height="9" rx="0.5"/><rect x="13.5" y="0" width="3" height="11" rx="0.5"/></svg>
+        <svg width="15" height="11" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 4.5a10 10 0 0114 0M3.5 7a6 6 0 019 0M6 9.5a2 2 0 014 0"/></svg>
+        <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="19" height="10" rx="2.5" stroke="currentColor" stroke-width="1"/><rect x="2.5" y="2.5" width="15" height="7" rx="1.2" fill="currentColor"/><rect x="21" y="4" width="1.6" height="4" rx="0.8" fill="currentColor"/></svg>
+      </div>
+    </div>
+
+    <div class="screens-wrap" id="screensWrap">
+      <!-- LIST SCREEN -->
+      <div class="screen-list">
+        <div class="intro" id="introScreen">
+          <div class="intro-eyebrow">Why BetBoard</div>
+          <h2>Everyone else makes you<br>run <em>3 apps</em> to research one bet.</h2>
+          <p class="lead">Best odds, head-to-head history, injuries, rest &amp; travel, and sharp-money signals — normally scattered across a sportsbook, an injury site, and a stats page. Here, it's one tab per game.</p>
+          <div class="intro-compare">
+            <div class="compare-row">
+              <div class="compare-ico">🏟️</div>
+              <div class="compare-text"><strong>Head-to-head + situational</strong><span>Last meetings, rest days, travel — rarely bundled together anywhere else</span></div>
+            </div>
+            <div class="compare-row">
+              <div class="compare-ico">🩹</div>
+              <div class="compare-text"><strong>Injuries, right on the game card</strong><span>No separate injury-report page to dig through</span></div>
+            </div>
+            <div class="compare-row">
+              <div class="compare-ico">💰</div>
+              <div class="compare-text"><strong>Best price + market signal</strong><span>See the top odds and where sharp money is leaning, together</span></div>
+            </div>
+          </div>
+          <button class="intro-cta" id="introCta">See it in action</button>
+        </div>
+
+        <div class="appbar">
+          <div>
+            <h1>BET<span>BOARD</span></h1>
+            <div class="sub">Stop app-hopping. It's all one tab.</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="icon-btn" id="connectBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5L4 4m13.5 2.5L20 4M6.5 17.5L4 20m13.5-2.5L20 20"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+            </button>
+            <button class="icon-btn" id="infoBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </button>
+            <button class="icon-btn" id="refreshBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="banner" id="reinforceBanner">
+          <div class="banner-txt"><strong>One tab, not three.</strong> Tap any game for H2H, injuries, situational trends &amp; market signals — together.</div>
+          <button class="banner-close" id="bannerClose">✕</button>
+        </div>
+        <div class="segmented" id="segmented"></div>
+        <div class="data-source-row" id="dataSourceRow"></div>
+        <div class="scroll" id="gameList"></div>
+      </div>
+
+      <!-- DATA SOURCE INFO SCREEN -->
+      <div class="intro hidden" id="connectScreen" style="z-index:60;">
+        <div class="intro-eyebrow">Live data</div>
+        <h2 id="dsHeadline">Checking for<br>live odds…</h2>
+        <p class="lead" id="dsLead">This app pulls MLB odds from our own server, which handles the API connection — nothing to set up on your end.</p>
+        <div class="intro-compare" style="padding:14px;">
+          <div id="connectStatus" style="font-size:13px; color:var(--muted); min-height:16px;"></div>
+        </div>
+        <button class="intro-cta" id="connectSubmit">Try again</button>
+        <div class="intro-skip" id="connectClose" style="margin-top:4px;">Close</div>
+      </div>
+
+      <!-- DETAIL SCREEN -->
+      <div class="screen-detail">
+        <div class="back-row">
+          <button class="back-btn" id="backBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div>
+            <div class="back-title" id="detailTitle">— @ —</div>
+            <div class="back-time" id="detailTime"></div>
+          </div>
+        </div>
+        <div class="dtabs" id="detailTabs"></div>
+        <div class="scroll" id="detailContent"></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast">Coming soon</div>
+
+    <div class="bottomnav">
+      <button class="navitem active" data-nav="games">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
+        <span class="nlbl">Games</span>
+      </button>
+      <button class="navitem" data-nav="trends">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+        <span class="nlbl">Trends</span>
+      </button>
+      <button class="navitem" data-nav="saved">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+        <span class="nlbl">Saved</span>
+      </button>
+      <button class="navitem" data-nav="account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 6-6 8-6s6.5 2 8 6"/></svg>
+        <span class="nlbl">Account</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SPORTS = ["NFL","NBA","MLB"];
+const BOOKS = ["DraftKings","FanDuel","BetMGM"];
+
+const MOCK_GAMES = {
+  NFL: [
+    { id:"nfl1", away:"Bills", home:"Chiefs", time:"Sun 4:25p ET",
+      odds:{ DraftKings:{mlAway:145,mlHome:-165,spread:-2.5,spreadOdds:-110,total:47.5,totalOdds:-108},
+             FanDuel:{mlAway:150,mlHome:-170,spread:-2.5,spreadOdds:-112,total:47.5,totalOdds:-110},
+             BetMGM:{mlAway:140,mlHome:-160,spread:-3,spreadOdds:-105,total:48,totalOdds:-105} },
+      form:{away:"WWLWW",home:"WWWLW"}, ats:{away:"7-3",home:"6-4"}, ou:{away:"5-5",home:"7-3"},
+      trend:[{g:"-5",away:24,home:27},{g:"-4",away:30,home:21},{g:"-3",away:17,home:31},{g:"-2",away:27,home:24},{g:"-1",away:28,home:20}],
+      edge:"Chiefs are 6-4 ATS at home but Bills' pass rush ranks top-5 in pressure rate — value on Bills +2.5.",
+      research:{ h2h:[{date:"Jan 2026",note:"Chiefs won 27-24 (Bills covered +3)"},{date:"Oct 2025",note:"Bills won 31-17 (Bills covered -6.5)"},{date:"Jan 2025",note:"Chiefs won 20-17 (Chiefs covered -1.5)"}],
+        situational:{awayRest:7,homeRest:7,awayTravel:"Cross-country, 3 time zones",homeTravel:"Home",awayRoadRecord:"4-3 on the road",homeHomeRecord:"5-2 at home"},
+        injuries:[{team:"Bills",player:"WR2",status:"Questionable",note:"Limited in practice, ankle"},{team:"Chiefs",player:"OT (starting)",status:"Out",note:"Backup making 2nd career start"}],
+        market:{movementNote:"Line moved 1 point toward Bills since open",publicOnHomePct:68,moneyOnHomePct:51,note:"Public heavy on Chiefs, money more balanced — light sharp signal on Bills"} } },
+    { id:"nfl2", away:"Cowboys", home:"Eagles", time:"Sun 8:20p ET",
+      odds:{ DraftKings:{mlAway:165,mlHome:-190,spread:-4,spreadOdds:-110,total:45.5,totalOdds:-112},
+             FanDuel:{mlAway:170,mlHome:-195,spread:-4,spreadOdds:-108,total:46,totalOdds:-110},
+             BetMGM:{mlAway:160,mlHome:-185,spread:-3.5,spreadOdds:-115,total:45.5,totalOdds:-105} },
+      form:{away:"LWLLW",home:"WWWWL"}, ats:{away:"4-6",home:"8-2"}, ou:{away:"6-4",home:"4-6"},
+      trend:[{g:"-5",away:20,home:24},{g:"-4",away:13,home:28},{g:"-3",away:24,home:31},{g:"-2",away:17,home:34},{g:"-1",away:27,home:17}],
+      edge:"Eagles offense has cleared the total in 4 of last 5 home games — lean Over 45.5.",
+      research:{ h2h:[{date:"Dec 2025",note:"Eagles won 34-17 (Eagles covered -6)"},{date:"Sep 2025",note:"Cowboys won 27-24 (Cowboys covered +2.5)"},{date:"Jan 2025",note:"Eagles won 28-14 (Eagles covered -5.5)"}],
+        situational:{awayRest:6,homeRest:7,awayTravel:"Short trip, division game",homeTravel:"Home",awayRoadRecord:"3-5 on the road",homeHomeRecord:"8-1 at home"},
+        injuries:[{team:"Cowboys",player:"CB1",status:"Out",note:"IR, missing 3rd straight game"},{team:"Eagles",player:"RB1",status:"Probable",note:"Full practice, no concern"}],
+        market:{movementNote:"Line moved a full point toward Eagles since open",publicOnHomePct:74,moneyOnHomePct:79,note:"Public and money aligned on Eagles — no clear contrarian signal"} } },
+    { id:"nfl3", away:"49ers", home:"Rams", time:"Mon 8:15p ET",
+      odds:{ DraftKings:{mlAway:-135,mlHome:115,spread:2.5,spreadOdds:-110,total:44.5,totalOdds:-110},
+             FanDuel:{mlAway:-140,mlHome:120,spread:2.5,spreadOdds:-105,total:44,totalOdds:-108},
+             BetMGM:{mlAway:-130,mlHome:110,spread:3,spreadOdds:-110,total:44.5,totalOdds:-112} },
+      form:{away:"WLWWW",home:"LWLWL"}, ats:{away:"6-4",home:"3-7"}, ou:{away:"5-5",home:"6-4"},
+      trend:[{g:"-5",away:27,home:20},{g:"-4",away:24,home:17},{g:"-3",away:31,home:24},{g:"-2",away:20,home:27},{g:"-1",away:34,home:13}],
+      edge:"Rams are 3-7 ATS as home dogs this season — 49ers -2.5 is the sharper side early.",
+      research:{ h2h:[{date:"Dec 2025",note:"49ers won 24-20 (49ers covered -2.5)"},{date:"Oct 2025",note:"Rams won 30-23 (Rams covered +4)"},{date:"Jan 2025",note:"49ers won 21-13 (49ers covered -3)"}],
+        situational:{awayRest:10,homeRest:6,awayTravel:"Short flight, extra rest off bye",homeTravel:"Home, short week (Mon night)",awayRoadRecord:"3-4 on the road",homeHomeRecord:"1-5 at home"},
+        injuries:[{team:"49ers",player:"LB1",status:"Questionable",note:"Managing knee soreness"},{team:"Rams",player:"WR1",status:"Out",note:"Hamstring, ruled out Friday"}],
+        market:{movementNote:"Line moved a full point toward 49ers since open",publicOnHomePct:41,moneyOnHomePct:28,note:"Public and money both light on Rams — clean sharp lean to 49ers"} } }
+  ],
+  NBA: [
+    { id:"nba1", away:"Celtics", home:"Nuggets", time:"Fri 9:00p ET",
+      odds:{ DraftKings:{mlAway:-110,mlHome:-110,spread:0.5,spreadOdds:-108,total:224.5,totalOdds:-110},
+             FanDuel:{mlAway:-115,mlHome:-105,spread:0.5,spreadOdds:-110,total:225,totalOdds:-112},
+             BetMGM:{mlAway:-105,mlHome:-115,spread:1,spreadOdds:-105,total:224,totalOdds:-108} },
+      form:{away:"WWLWL",home:"WWWLW"}, ats:{away:"5-5",home:"6-4"}, ou:{away:"6-4",home:"7-3"},
+      trend:[{g:"-5",away:112,home:118},{g:"-4",away:121,home:109},{g:"-3",away:105,home:124},{g:"-2",away:118,home:115},{g:"-1",away:130,home:112}],
+      edge:"Both teams hitting the over at a 65%+ clip in last 10 — total looks light at 224.5.",
+      research:{ h2h:[{date:"Mar 2026",note:"Nuggets won 121-115 (Nuggets covered -3)"},{date:"Dec 2025",note:"Celtics won 118-110 (Celtics covered -1)"},{date:"Feb 2025",note:"Nuggets won 130-122 (Over hit, 252)"}],
+        situational:{awayRest:1,homeRest:2,awayTravel:"Back-to-back, 2nd night",homeTravel:"Home, coming off 2 days off",awayRoadRecord:"5-4 on the road",homeHomeRecord:"6-3 at home"},
+        injuries:[{team:"Celtics",player:"PG1",status:"Questionable",note:"Rest management, back-to-back"},{team:"Nuggets",player:"C1",status:"Probable",note:"Ankle soreness, expected to play"}],
+        market:{movementNote:"Total moved up 2 points since open",publicOnHomePct:55,moneyOnHomePct:62,note:"Money slightly ahead of public on Nuggets — mild sharp lean"} } },
+    { id:"nba2", away:"Warriors", home:"Suns", time:"Sat 10:00p ET",
+      odds:{ DraftKings:{mlAway:120,mlHome:-142,spread:3.5,spreadOdds:-110,total:231,totalOdds:-110},
+             FanDuel:{mlAway:125,mlHome:-145,spread:3.5,spreadOdds:-112,total:231.5,totalOdds:-108},
+             BetMGM:{mlAway:118,mlHome:-138,spread:4,spreadOdds:-105,total:230.5,totalOdds:-110} },
+      form:{away:"LLWLW",home:"WWLWW"}, ats:{away:"3-7",home:"7-3"}, ou:{away:"4-6",home:"8-2"},
+      trend:[{g:"-5",away:108,home:121},{g:"-4",away:115,home:117},{g:"-3",away:102,home:128},{g:"-2",away:119,home:114},{g:"-1",away:110,home:122}],
+      edge:"Suns 7-3 ATS at home, Warriors on the second night of a back-to-back — fade the road side.",
+      research:{ h2h:[{date:"Feb 2026",note:"Suns won 124-116 (Suns covered -4.5)"},{date:"Nov 2025",note:"Warriors won 119-112 (Warriors covered +5)"},{date:"Apr 2025",note:"Suns won 130-121 (Over hit, 244)"}],
+        situational:{awayRest:0,homeRest:3,awayTravel:"Back-to-back, road trip game 4 of 5",homeTravel:"Home, well rested",awayRoadRecord:"2-6 on the road",homeHomeRecord:"7-2 at home"},
+        injuries:[{team:"Warriors",player:"SG1",status:"Out",note:"Load management on 2nd night"},{team:"Suns",player:"PF1",status:"Probable",note:"No injury concern"}],
+        market:{movementNote:"Line moved a full point toward Suns since open",publicOnHomePct:71,moneyOnHomePct:76,note:"Public and money both on Suns — no contrarian value"} } },
+    { id:"nba3", away:"Knicks", home:"Bucks", time:"Sun 6:30p ET",
+      odds:{ DraftKings:{mlAway:-105,mlHome:-115,spread:1,spreadOdds:-110,total:219.5,totalOdds:-110},
+             FanDuel:{mlAway:-102,mlHome:-120,spread:1,spreadOdds:-108,total:220,totalOdds:-112},
+             BetMGM:{mlAway:-108,mlHome:-112,spread:0.5,spreadOdds:-110,total:219,totalOdds:-105} },
+      form:{away:"WWWLW",home:"LWWWL"}, ats:{away:"8-2",home:"5-5"}, ou:{away:"3-7",home:"4-6"},
+      trend:[{g:"-5",away:104,home:108},{g:"-4",away:111,home:102},{g:"-3",away:98,home:113},{g:"-2",away:106,home:100},{g:"-1",away:115,home:109}],
+      edge:"Both defenses trending down in pace — Under has hit in 7 of the last 10 meetings.",
+      research:{ h2h:[{date:"Jan 2026",note:"Knicks won 104-98 (Under hit, 202)"},{date:"Nov 2025",note:"Bucks won 112-107 (Bucks covered -2)"},{date:"Mar 2025",note:"Knicks won 109-101 (Under hit, 214.5)"}],
+        situational:{awayRest:2,homeRest:1,awayTravel:"Normal trip",homeTravel:"Back-to-back, 2nd night",awayRoadRecord:"6-3 on the road",homeHomeRecord:"5-4 at home"},
+        injuries:[{team:"Knicks",player:"C1",status:"Probable",note:"No injury concern"},{team:"Bucks",player:"SF1",status:"Questionable",note:"Rest possibility, back-to-back"}],
+        market:{movementNote:"Total moved down 1.5 points since open",publicOnHomePct:48,moneyOnHomePct:44,note:"Balanced action both sides — no strong signal"} } }
+  ],
+  MLB: [
+    { id:"mlb1", away:"Yankees", home:"Red Sox", time:"Fri 7:10p ET",
+      odds:{ DraftKings:{mlAway:-128,mlHome:108,runline:-1.5,runlineOdds:145,total:8.5,totalOdds:-105},
+             FanDuel:{mlAway:-132,mlHome:112,runline:-1.5,runlineOdds:140,total:8.5,totalOdds:-110},
+             BetMGM:{mlAway:-125,mlHome:105,runline:-1.5,runlineOdds:150,total:8,totalOdds:-108} },
+      form:{away:"WWLWW",home:"LWLWW"}, ats:{away:"6-4",home:"5-5"}, ou:{away:"7-3",home:"4-6"},
+      trend:[{g:"-5",away:5,home:3},{g:"-4",away:2,home:6},{g:"-3",away:7,home:1},{g:"-2",away:4,home:4},{g:"-1",away:8,home:2}],
+      edge:"Yankees' bullpen ERA over last 10 games is a full run better than Boston's — lean Yankees ML.",
+      research:{ h2h:[{date:"Sep 2025",note:"Yankees won 6-3 (Yankees ML)"},{date:"Jul 2025",note:"Red Sox won 5-4 (Red Sox +130)"},{date:"Apr 2025",note:"Yankees won 9-2 (Over hit, 8.5)"}],
+        situational:{awayRest:1,homeRest:1,awayTravel:"Normal road trip",homeTravel:"Home",awayRoadRecord:"23-18 on the road",homeHomeRecord:"21-19 at home"},
+        injuries:[{team:"Yankees",player:"SP (starter)",status:"Probable",note:"On normal rest, no concern"},{team:"Red Sox",player:"3B1",status:"Day-to-day",note:"Wrist, may be a late scratch"}],
+        market:{movementNote:"Line moved toward Yankees since open, from -115 to -128",publicOnHomePct:39,moneyOnHomePct:31,note:"Public and money both light on Red Sox — clean lean to Yankees"} } },
+    { id:"mlb2", away:"Dodgers", home:"Giants", time:"Sat 8:15p ET",
+      odds:{ DraftKings:{mlAway:-155,mlHome:132,runline:-1.5,runlineOdds:125,total:7.5,totalOdds:-110},
+             FanDuel:{mlAway:-160,mlHome:138,runline:-1.5,runlineOdds:120,total:7.5,totalOdds:-105},
+             BetMGM:{mlAway:-150,mlHome:128,runline:-1.5,runlineOdds:130,total:7,totalOdds:-112} },
+      form:{away:"WWWWL",home:"LLWLL"}, ats:{away:"8-2",home:"2-8"}, ou:{away:"6-4",home:"3-7"},
+      trend:[{g:"-5",away:6,home:2},{g:"-4",away:9,home:3},{g:"-3",away:4,home:1},{g:"-2",away:7,home:5},{g:"-1",away:5,home:0}],
+      edge:"Giants have been shut out or held to 1 run in 3 of last 5 — Dodgers team total Over is the play.",
+      research:{ h2h:[{date:"Aug 2025",note:"Dodgers won 8-1 (Dodgers -1.5 covered)"},{date:"Jun 2025",note:"Dodgers won 5-4 (Under hit, 7.5)"},{date:"Sep 2024",note:"Giants won 3-2 (Giants ML)"}],
+        situational:{awayRest:0,homeRest:1,awayTravel:"Short flight, division series",homeTravel:"Home",awayRoadRecord:"25-16 on the road",homeHomeRecord:"17-23 at home"},
+        injuries:[{team:"Dodgers",player:"OF1",status:"Probable",note:"No injury concern"},{team:"Giants",player:"SP (starter)",status:"Out",note:"Bullpen game likely, thins pitching staff"}],
+        market:{movementNote:"Line moved sharply toward Dodgers, from -140 to -155",publicOnHomePct:22,moneyOnHomePct:15,note:"Heavy money and public both on Dodgers — no contrarian angle"} } },
+    { id:"mlb3", away:"Astros", home:"Rangers", time:"Sun 3:05p ET",
+      odds:{ DraftKings:{mlAway:-118,mlHome:100,runline:-1.5,runlineOdds:155,total:9,totalOdds:-108},
+             FanDuel:{mlAway:-120,mlHome:102,runline:-1.5,runlineOdds:150,total:9,totalOdds:-110},
+             BetMGM:{mlAway:-115,mlHome:-102,runline:-1.5,runlineOdds:160,total:8.5,totalOdds:-105} },
+      form:{away:"LWWLW",home:"WLWWL"}, ats:{away:"5-5",home:"6-4"}, ou:{away:"8-2",home:"6-4"},
+      trend:[{g:"-5",away:3,home:4},{g:"-4",away:6,home:5},{g:"-3",away:8,home:2},{g:"-2",away:5,home:6},{g:"-1",away:7,home:3}],
+      edge:"This series has gone Over in 8 of last 10 meetings — total sits a bit low at 9.",
+      research:{ h2h:[{date:"Jul 2025",note:"Astros won 7-6 (Over hit, 9)"},{date:"May 2025",note:"Rangers won 5-3 (Rangers +115)"},{date:"Sep 2024",note:"Astros won 9-4 (Over hit, 8.5)"}],
+        situational:{awayRest:1,homeRest:1,awayTravel:"Normal, day game after night game",homeTravel:"Home, day game after night game",awayRoadRecord:"21-20 on the road",homeHomeRecord:"20-20 at home"},
+        injuries:[{team:"Astros",player:"2B1",status:"Questionable",note:"Day game rest possibility"},{team:"Rangers",player:"SP (starter)",status:"Probable",note:"On normal rest, no concern"}],
+        market:{movementNote:"Total moved up half a run since open",publicOnHomePct:51,moneyOnHomePct:47,note:"Balanced action both sides — no strong signal"} } }
+  ]
+};
+
+let state = { sport:"NFL", detailId:null, detailTab:"odds", liveGamesBySport:{}, connecting:false, teamTrends:{} };
+
+// ---- Backend config ----
+// Fill this in once you've deployed betboard-server (see its README).
+// Leave blank to keep running on demo data only.
+const BACKEND_URL = "https://betboard-server.onrender.com";
+
+const ODDS_API_BOOK_MAP = { draftkings:"DraftKings", fanduel:"FanDuel", betmgm:"BetMGM" };
+
+function fmtOdds(n){
+  if(n===undefined || n===null || !isFinite(n)) return "—";
+  return n>0 ? `+${n}` : `${n}`;
+}
+function getGamesForSport(sport){
+  return state.liveGamesBySport[sport] || MOCK_GAMES[sport];
+}
+function bestBook(oddsObj, key, wantHigh){
+  let best=null, bestVal = wantHigh ? -Infinity : Infinity;
+  BOOKS.forEach(book=>{
+    const bookOdds = oddsObj[book];
+    if(!bookOdds) return;
+    const v = bookOdds[key];
+    if(v===undefined) return;
+    if(wantHigh ? v>bestVal : v<bestVal){ bestVal=v; best=book; }
+  });
+  return {book:best, val:bestVal};
+}
+function statusColor(status){
+  if(status==="Out") return "var(--red)";
+  if(status==="Questionable"||status==="Day-to-day") return "var(--amber)";
+  return "var(--green)";
+}
+function findGame(id){
+  for(const s of SPORTS){
+    const list = getGamesForSport(s);
+    const g = list.find(x=>x.id===id);
+    if(g) return g;
+  }
+}
+
+function formatCommenceTime(iso){
+  const d = new Date(iso);
+  const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  let h = d.getHours()%12; if(h===0) h=12;
+  const m = d.getMinutes().toString().padStart(2,"0");
+  const ampm = d.getHours()>=12 ? "p" : "a";
+  return `${days[d.getDay()]} ${h}:${m}${ampm} local`;
+}
+
+function transformOddsApiEvent(ev){
+  const away = ev.away_team, home = ev.home_team;
+  const odds = {};
+  (ev.bookmakers||[]).forEach(bm=>{
+    const label = ODDS_API_BOOK_MAP[bm.key];
+    if(!label) return;
+    const entry = {};
+    (bm.markets||[]).forEach(m=>{
+      if(m.key==="h2h"){
+        m.outcomes.forEach(o=>{
+          if(o.name===away) entry.mlAway = o.price;
+          if(o.name===home) entry.mlHome = o.price;
+        });
+      } else if(m.key==="spreads"){
+        const homeSide = m.outcomes.find(o=>o.name===home);
+        if(homeSide){ entry.runline = homeSide.point; entry.runlineOdds = homeSide.price; }
+      } else if(m.key==="totals"){
+        const overSide = m.outcomes.find(o=>o.name==="Over");
+        if(overSide){ entry.total = overSide.point; entry.totalOdds = overSide.price; }
+      }
+    });
+    odds[label] = entry;
+  });
+  return { id: ev.id, away, home, time: formatCommenceTime(ev.commence_time), odds, live:true };
+}
+
+async function fetchLiveOddsFromBackend(sportSlug){
+  const res = await fetch(`${BACKEND_URL}/api/odds/${sportSlug}`);
+  if(!res.ok){
+    let msg = `Server error (${res.status})`;
+    try{ const body = await res.json(); if(body && body.error) msg = body.error; }catch(e){}
+    throw new Error(msg);
+  }
+  const body = await res.json();
+  return body.games.map(transformOddsApiEvent);
+}
+
+function setConnectStatus(msg, color){
+  const el = document.getElementById("connectStatus");
+  el.textContent = msg;
+  el.style.color = color || "var(--muted)";
+}
+
+async function fetchLiveTrends(){
+  const res = await fetch(`${BACKEND_URL}/api/trends/mlb`);
+  if(!res.ok) throw new Error(`Trends request failed (${res.status})`);
+  const body = await res.json();
+  return body.teams; // { "New York Yankees": { form, record, trend }, ... }
+}
+
+async function loadLiveMLB({ silent } = {}){
+  if(!BACKEND_URL){
+    if(!silent){
+      document.getElementById("dsHeadline").innerHTML = "No backend<br>configured yet.";
+      document.getElementById("dsLead").textContent = "This copy of the app hasn't been pointed at a live-odds server, so it's running on demo data only.";
+      setConnectStatus("Set BACKEND_URL in the code once your server is deployed.", "var(--muted)");
+    }
+    return;
+  }
+  if(state.connecting) return;
+  state.connecting = true;
+  if(!silent) setConnectStatus("Fetching live MLB odds…");
+  try{
+    const games = await fetchLiveOddsFromBackend("mlb");
+    state.liveGamesBySport.MLB = games;
+    // Trends come from a separate free endpoint (MLB's own API, not the
+    // Odds API), so a failure here shouldn't block odds from showing.
+    try{ state.teamTrends = await fetchLiveTrends(); }catch(e){ /* leave stale/empty, Trends tab falls back to empty state */ }
+    if(!silent){
+      state.sport = "MLB";
+      document.getElementById("dsHeadline").innerHTML = "You're live.";
+      setConnectStatus(`Connected — ${games.length} MLB game${games.length===1?'':'s'} loaded.`, "var(--green)");
+      renderSegmented();
+    }
+    renderGameList();
+    if(!silent) setTimeout(()=>{ document.getElementById("connectScreen").classList.add("hidden"); }, 700);
+  }catch(err){
+    if(!silent){
+      document.getElementById("dsHeadline").innerHTML = "Couldn't reach<br>the live server.";
+      setConnectStatus(err.message || "Check that the backend is running.", "var(--red)");
+    }
+  }finally{
+    state.connecting = false;
+  }
+}
+
+function renderSegmented(){
+  document.getElementById("segmented").innerHTML =
+    SPORTS.map(s=>`<button class="${s===state.sport?'active':''}" data-sport="${s}">${s}</button>`).join("");
+}
+
+function renderFormDots(code){
+  return `<span class="form-dots">${code.split("").map(c=>`<span class="form-dot" style="background:${c==='W'?'var(--green)':'var(--red)'}"></span>`).join("")}</span>`;
+}
+
+function renderChart(game){
+  const w=300,h=110,pad=18;
+  const all = game.trend.flatMap(t=>[t.away,t.home]);
+  const max=Math.max(...all), min=Math.min(...all);
+  const x = i => pad + i*((w-2*pad)/(game.trend.length-1));
+  const y = v => h-pad - ((v-min)/(max-min||1))*(h-2*pad);
+  const pathFor = key => game.trend.map((t,i)=>`${i===0?'M':'L'}${x(i)},${y(t[key])}`).join(" ");
+  return `
+    <span class="chart-label">Scoring trend, last 5</span>
+    <svg width="100%" height="100" viewBox="0 0 ${w} ${h}">
+      <path d="${pathFor('away')}" fill="none" stroke="var(--muted)" stroke-width="2"/>
+      <path d="${pathFor('home')}" fill="none" stroke="var(--amber)" stroke-width="2"/>
+      ${game.trend.map((t,i)=>`<text x="${x(i)}" y="${h-3}" font-size="9" fill="var(--muted)" text-anchor="middle">${t.g}</text>`).join("")}
+    </svg>
+    <div style="display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:2px;">
+      <span><span style="display:inline-block;width:8px;height:2px;background:var(--muted);margin-right:4px;"></span>${game.away}</span>
+      <span><span style="display:inline-block;width:8px;height:2px;background:var(--amber);margin-right:4px;"></span>${game.home}</span>
+    </div>`;
+}
+
+function hasSpreadKey(game){
+  for(const book of BOOKS){
+    const o = game.odds[book];
+    if(o) return o.spread !== undefined || o.runline === undefined;
+  }
+  return true;
+}
+function renderOddsTable(game){
+  const isSpread = hasSpreadKey(game);
+  const spreadValKey = isSpread ? "spread" : "runline";
+  const spreadOddsKey = isSpread ? "spreadOdds" : "runlineOdds";
+  const spreadLabel = isSpread ? "Spread" : "Run Line";
+  const bestAway = bestBook(game.odds,"mlAway",true);
+  const bestHome = bestBook(game.odds,"mlHome",true);
+  const bestSpread = bestBook(game.odds,spreadOddsKey,true);
+  const bestTotal = bestBook(game.odds,"totalOdds",true);
+  return `
+    <div class="panel-box">
+      <table>
+        <thead><tr><th>Book</th><th>${game.away}</th><th>${game.home}</th><th>${spreadLabel}</th><th>Total</th></tr></thead>
+        <tbody>
+          ${BOOKS.map(book=>{
+            const o = game.odds[book];
+            if(!o) return `<tr><td>${book}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;
+            const sVal = o[spreadValKey], sOdds = o[spreadOddsKey];
+            return `<tr>
+              <td>${book}</td>
+              <td class="${book===bestAway.book?'best':''}">${fmtOdds(o.mlAway)}</td>
+              <td class="${book===bestHome.book?'best':''}">${fmtOdds(o.mlHome)}</td>
+              <td class="${book===bestSpread.book?'best':''}">${sVal!==undefined ? (sVal>0?'+':'')+sVal : '—'}</td>
+              <td class="${book===bestTotal.book?'best':''}">${o.total!==undefined ? o.total : '—'}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+      ${game.live ? `<div style="margin-top:10px;font-size:11px;color:var(--muted);">Live odds from The Odds API. Coverage varies by book &amp; game.</div>` : ""}
+    </div>`;
+}
+
+function renderTrends(game){
+  if(game.live){
+    const awayT = state.teamTrends[game.away];
+    const homeT = state.teamTrends[game.home];
+    if(!awayT || !homeT || awayT.trend.length===0 || homeT.trend.length===0){
+      return `<div class="panel-box empty-state">
+        <div class="ico">📊</div>
+        Couldn't load recent form for this matchup yet.<br>Try refreshing — MLB's stats feed occasionally lags right after a game ends.
+      </div>`;
+    }
+    const len = Math.min(awayT.trend.length, homeT.trend.length);
+    const chartGame = {
+      away: game.away, home: game.home,
+      trend: Array.from({length: len}, (_, i) => ({
+        g: awayT.trend[awayT.trend.length-len+i].g,
+        away: awayT.trend[awayT.trend.length-len+i].runsFor,
+        home: homeT.trend[homeT.trend.length-len+i].runsFor,
+      })),
+    };
+    return `
+      <div class="panel-box">
+        <div class="row-line"><span class="k">Last 5</span><span class="k">Record</span></div>
+        <div class="form-line"><span>${game.away}</span>${renderFormDots(awayT.form)}<span>${awayT.record}</span></div>
+        <div class="form-line"><span>${game.home}</span>${renderFormDots(homeT.form)}<span>${homeT.record}</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">Real results from MLB's Stats API — last 5 completed games for each team.</div>
+      </div>
+      <div class="panel-box">${renderChart(chartGame)}</div>`;
+  }
+  return `
+    <div class="panel-box">
+      <div class="row-line"><span class="k">Last 5</span><span class="k">ATS</span><span class="k">O/U</span></div>
+      <div class="form-line"><span>${game.away}</span>${renderFormDots(game.form.away)}<span>${game.ats.away}</span><span>${game.ou.away}</span></div>
+      <div class="form-line"><span>${game.home}</span>${renderFormDots(game.form.home)}<span>${game.ats.home}</span><span>${game.ou.home}</span></div>
+      <div class="callout">🔥&nbsp;${game.edge}</div>
+    </div>
+    <div class="panel-box">${renderChart(game)}</div>`;
+}
+
+function renderResearch(game){
+  if(game.live){
+    return `<div class="panel-box empty-state">
+      <div class="ico">🔎</div>
+      No research provider connected yet.<br>Head-to-head history, injuries, situational trends, and market signals need a stats/injury feed alongside odds — real games won't get placeholder data here.
+    </div>`;
+  }
+  const r = game.research;
+  return `
+    <div class="panel-box">
+      <div class="sec-label">Head-to-head, last 3</div>
+      ${r.h2h.map(m=>`<div class="h2h-row"><span class="h2h-date">${m.date}</span><span style="text-align:right;">${m.note}</span></div>`).join("")}
+    </div>
+    <div class="panel-box">
+      <div class="sec-label">Injury report</div>
+      ${r.injuries.map(inj=>`<div class="inj-row"><span class="status-tag" style="background:${statusColor(inj.status)}">${inj.status}</span><span><strong>${inj.team} ${inj.player}</strong> — ${inj.note}</span></div>`).join("")}
+    </div>
+    <div class="panel-box">
+      <div class="sec-label">Situational</div>
+      <div class="row-line"><span class="k">Rest (${game.away} / ${game.home})</span><span class="v">${r.situational.awayRest}d / ${r.situational.homeRest}d</span></div>
+      <div class="row-line"><span class="k">${game.away} travel</span><span class="v">${r.situational.awayTravel}</span></div>
+      <div class="row-line"><span class="k">${game.home} travel</span><span class="v">${r.situational.homeTravel}</span></div>
+      <div class="row-line"><span class="k">${game.away} road record</span><span class="v">${r.situational.awayRoadRecord}</span></div>
+      <div class="row-line"><span class="k">${game.home} home record</span><span class="v">${r.situational.homeHomeRecord}</span></div>
+    </div>
+    <div class="panel-box">
+      <div class="sec-label">Market trends</div>
+      <div style="font-size:13px;margin-bottom:6px;">${r.market.movementNote}</div>
+      <div class="row-line"><span class="k">Public on ${game.home}</span><span class="v">${r.market.publicOnHomePct}%</span></div>
+      <div class="row-line"><span class="k">Money on ${game.home}</span><span class="v">${r.market.moneyOnHomePct}%</span></div>
+      <div class="callout">🔥&nbsp;${r.market.note}</div>
+    </div>`;
+}
+
+function renderDataSourceBadge(){
+  const el = document.getElementById("dataSourceRow");
+  const isLive = !!state.liveGamesBySport[state.sport];
+  el.innerHTML = isLive
+    ? `<span class="src-badge live"><span class="src-dot"></span>LIVE — The Odds API</span>`
+    : `<span class="src-badge demo"><span class="src-dot"></span>Demo data</span>`;
+}
+
+function renderGameList(){
+  const el = document.getElementById("gameList");
+  renderDataSourceBadge();
+  const games = getGamesForSport(state.sport);
+  if(games.length===0){
+    el.innerHTML = `<div class="empty-state"><div class="ico">⚾</div>No games returned for this sport right now — it may be off-season, or try reconnecting.</div>`;
+    return;
+  }
+  el.innerHTML = games.map(game=>{
+    const isSpread = hasSpreadKey(game);
+    const spreadValKey = isSpread ? "spread" : "runline";
+    const spreadOddsKey = isSpread ? "spreadOdds" : "runlineOdds";
+    const spreadLabel = isSpread ? "Spread" : "Run Line";
+    const bestAway = bestBook(game.odds,"mlAway",true);
+    const bestHome = bestBook(game.odds,"mlHome",true);
+    const bestSpread = bestBook(game.odds,spreadOddsKey,true);
+    const bestTotal = bestBook(game.odds,"totalOdds",true);
+    const spreadVal = bestSpread.book ? game.odds[bestSpread.book][spreadValKey] : undefined;
+    const totalVal = bestTotal.book ? game.odds[bestTotal.book].total : undefined;
+    return `
+      <div class="gcard" data-open="${game.id}">
+        <div class="gcard-top">
+          <div>
+            <div class="gcard-matchup">${game.away} <span class="at">@</span> ${game.home}</div>
+            <div class="gcard-time">${game.time}</div>
+          </div>
+          <svg class="chev-right" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="chip-row">
+          <div class="chip"><div class="clbl">${game.away}</div><div class="cval flip" data-refresh>${fmtOdds(bestAway.val)}</div></div>
+          <div class="chip"><div class="clbl">${game.home}</div><div class="cval flip" data-refresh>${fmtOdds(bestHome.val)}</div></div>
+        </div>
+        <div class="subline-row">
+          <span>${spreadLabel} ${spreadVal!==undefined ? (spreadVal>0?'+':'')+spreadVal : '—'}</span>
+          <span>Total ${totalVal!==undefined ? totalVal : '—'}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function renderDetail(){
+  const game = findGame(state.detailId);
+  if(!game) return;
+  document.getElementById("detailTitle").textContent = `${game.away} @ ${game.home}`;
+  document.getElementById("detailTime").textContent = game.time;
+  const tabs = [{key:"odds",label:"Odds"},{key:"trends",label:"Trends"},{key:"research",label:"Research"}];
+  document.getElementById("detailTabs").innerHTML = tabs.map(t=>
+    `<button class="dtab ${state.detailTab===t.key?'active':''}" data-dtab="${t.key}">${t.label}</button>`
+  ).join("");
+  const content = document.getElementById("detailContent");
+  if(state.detailTab==="odds") content.innerHTML = renderOddsTable(game);
+  else if(state.detailTab==="trends") content.innerHTML = renderTrends(game);
+  else content.innerHTML = renderResearch(game);
+}
+
+function openDetail(id){
+  state.detailId = id;
+  state.detailTab = "odds";
+  renderDetail();
+  document.getElementById("screensWrap").classList.add("detail-open");
+}
+function closeDetail(){
+  document.getElementById("screensWrap").classList.remove("detail-open");
+}
+
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=>t.classList.remove("show"), 1400);
+}
+
+function updateClock(){
+  const d = new Date();
+  let h = d.getHours()%12; if(h===0) h=12;
+  const m = d.getMinutes().toString().padStart(2,"0");
+  document.getElementById("clock").textContent = `${h}:${m}`;
+}
+
+function attachEvents(){
+  document.getElementById("introCta").addEventListener("click", ()=>{
+    document.getElementById("introScreen").classList.add("hidden");
+  });
+  document.getElementById("infoBtn").addEventListener("click", ()=>{
+    document.getElementById("introScreen").classList.remove("hidden");
+  });
+  document.getElementById("connectBtn").addEventListener("click", ()=>{
+    document.getElementById("connectScreen").classList.remove("hidden");
+    document.getElementById("dsHeadline").innerHTML = state.liveGamesBySport.MLB ? "You're live." : "Checking for<br>live odds…";
+    setConnectStatus("");
+    loadLiveMLB();
+  });
+  document.getElementById("connectClose").addEventListener("click", ()=>{
+    document.getElementById("connectScreen").classList.add("hidden");
+  });
+  document.getElementById("connectSubmit").addEventListener("click", ()=>loadLiveMLB());
+  document.getElementById("bannerClose").addEventListener("click", ()=>{
+    document.getElementById("reinforceBanner").remove();
+  });
+  document.getElementById("segmented").addEventListener("click", e=>{
+    const btn = e.target.closest("[data-sport]");
+    if(!btn) return;
+    state.sport = btn.dataset.sport;
+    renderSegmented(); renderGameList();
+  });
+  document.getElementById("gameList").addEventListener("click", e=>{
+    const card = e.target.closest("[data-open]");
+    if(card) openDetail(card.dataset.open);
+  });
+  document.getElementById("backBtn").addEventListener("click", closeDetail);
+  document.getElementById("detailTabs").addEventListener("click", e=>{
+    const btn = e.target.closest("[data-dtab]");
+    if(!btn) return;
+    state.detailTab = btn.dataset.dtab;
+    renderDetail();
+  });
+  document.getElementById("refreshBtn").addEventListener("click", async e=>{
+    const btn = e.currentTarget;
+    btn.classList.add("spinning");
+    if(BACKEND_URL && state.liveGamesBySport.MLB){
+      try{
+        await loadLiveMLB({ silent:true });
+      }catch(err){ showToast("Refresh failed — " + (err.message||"try again")); }
+    }
+    setTimeout(()=>{
+      btn.classList.remove("spinning");
+      document.querySelectorAll("[data-refresh]").forEach(el=>{
+        el.classList.remove("flip"); void el.offsetWidth; el.classList.add("flip");
+      });
+    }, 450);
+  });
+  document.querySelectorAll(".navitem").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".navitem").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const nav = btn.dataset.nav;
+      if(nav !== "games") showToast(nav.charAt(0).toUpperCase()+nav.slice(1)+" — coming soon");
+      else closeDetail();
+    });
+  });
+}
+
+renderSegmented();
+renderGameList();
+attachEvents();
+updateClock();
+setInterval(updateClock, 30000);
+loadLiveMLB({ silent:true }).then(()=>{ if(state.sport==="MLB") renderDataSourceBadge(); });
+</script>
+</body>
+</html>
