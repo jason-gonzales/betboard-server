@@ -167,7 +167,7 @@ async function computeH2H(teamAId, teamBId) {
   }
   meetings.sort((a, b) => b.date.localeCompare(a.date)); // most recent first
   return meetings.slice(0, 3).map(m => ({
-    date: new Date(m.date).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    date: new Date(m.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
     note: `${m.awayTeam} @ ${m.homeTeam} — ${m.note}`,
   }));
 }
