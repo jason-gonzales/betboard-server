@@ -138,6 +138,12 @@ async function computeH2H(teamAId, teamBId) {
   const res = await fetch(url);
   const body = await res.json();
   const meetings = [];
+  const seenGamePks = new Set(); // MLB can list the same physical game under two
+                                  // schedule entries (e.g. a suspended game resumed
+                                  // on a later date) — dedupe by its real game ID,
+                                  // but only after confirming this entry is a usable
+                                  // record (matchup + valid score), so a bad-data
+                                  // duplicate never blocks a good one.
   for (const day of body.dates || []) {
     for (const g of day.games) {
       if (g.status?.abstractGameState !== "Final") continue;
@@ -146,6 +152,10 @@ async function computeH2H(teamAId, teamBId) {
       if (!isMatchup) continue;
       const homeScore = g.teams.home.score, awayScore = g.teams.away.score;
       if (typeof homeScore !== "number" || typeof awayScore !== "number") continue; // skip games with incomplete score data (e.g. suspended/oddly-reported entries)
+      if (g.gamePk != null) {
+        if (seenGamePks.has(g.gamePk)) continue;
+        seenGamePks.add(g.gamePk);
+      }
       const homeWon = g.teams.home.isWinner === true;
       meetings.push({
         date: g.officialDate,
