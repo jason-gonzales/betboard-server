@@ -127,6 +127,59 @@ async function refreshTrends() {
   console.log(`[trends] refreshed for ${Object.keys(trends).length} teams`);
 }
 
+// Finds the last 3 completed meetings between two teams, using MLB's
+// free schedule endpoint (no historical-odds cost involved — this is
+// just game results, not betting lines, so no ATS info here).
+async function computeH2H(teamAId, teamBId) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 500); // ~1.5 seasons back, enough to usually catch a few meetings
+  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=${teamAId}&startDate=${fmtDate(start)}&endDate=${fmtDate(end)}`;
+  const res = await fetch(url);
+  const body = await res.json();
+  const meetings = [];
+  for (const day of body.dates || []) {
+    for (const g of day.games) {
+      if (g.status?.abstractGameState !== "Final") continue;
+      const homeId = g.teams.home.team.id, awayId = g.teams.away.team.id;
+      const isMatchup = (homeId === teamAId && awayId === teamBId) || (homeId === teamBId && awayId === teamAId);
+      if (!isMatchup) continue;
+      const homeScore = g.teams.home.score, awayScore = g.teams.away.score;
+      const homeWon = g.teams.home.isWinner === true;
+      meetings.push({
+        date: g.officialDate,
+        homeTeam: g.teams.home.team.name,
+        awayTeam: g.teams.away.team.name,
+        note: `${homeWon ? g.teams.home.team.name : g.teams.away.team.name} won ${Math.max(homeScore, awayScore)}-${Math.min(homeScore, awayScore)}`,
+      });
+    }
+  }
+  meetings.sort((a, b) => b.date.localeCompare(a.date)); // most recent first
+  return meetings.slice(0, 3).map(m => ({
+    date: new Date(m.date).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    note: `${m.awayTeam} @ ${m.homeTeam} — ${m.note}`,
+  }));
+}
+
+async function refreshH2H() {
+  if (!teamNameToId) await loadTeamIds();
+  const mlbGames = cache.mlb?.data || [];
+  const h2h = {};
+  for (const g of mlbGames) {
+    const awayId = teamNameToId?.[g.away_team];
+    const homeId = teamNameToId?.[g.home_team];
+    if (!awayId || !homeId) continue;
+    const key = `${g.away_team}__${g.home_team}`;
+    try {
+      h2h[key] = await computeH2H(awayId, homeId);
+    } catch (err) {
+      console.error(`H2H fetch failed for ${key}:`, err.message);
+    }
+  }
+  cache.h2h = { data: h2h, fetchedAt: Date.now() };
+  console.log(`[h2h] refreshed for ${Object.keys(h2h).length} matchups`);
+}
+
 async function refreshSport(sportSlug) {
   if (refreshPaused) return;
   const sportKey = SPORT_KEYS[sportSlug];
@@ -159,12 +212,17 @@ async function refreshAll() {
   for (const sportSlug of Object.keys(SPORT_KEYS)) {
     await refreshSport(sportSlug);
   }
-  // Trends use MLB's own free API (no credit cost), so this is safe to
-  // run every cycle regardless of Odds API credit status.
+  // Trends and H2H use MLB's own free API (no credit cost), so these are
+  // safe to run every cycle regardless of Odds API credit status.
   try {
     await refreshTrends();
   } catch (err) {
     console.error("Trends refresh failed:", err.message);
+  }
+  try {
+    await refreshH2H();
+  } catch (err) {
+    console.error("H2H refresh failed:", err.message);
   }
 }
 
@@ -198,6 +256,18 @@ app.get("/api/trends/mlb", (req, res) => {
     fetchedAt: entry.fetchedAt,
     ageSeconds: Math.round((Date.now() - entry.fetchedAt) / 1000),
     teams: entry.data,
+  });
+});
+
+app.get("/api/h2h/mlb", (req, res) => {
+  const entry = cache.h2h;
+  if (!entry) {
+    return res.status(503).json({ error: "No head-to-head data cached yet — try again in a few seconds." });
+  }
+  res.json({
+    fetchedAt: entry.fetchedAt,
+    ageSeconds: Math.round((Date.now() - entry.fetchedAt) / 1000),
+    matchups: entry.data,
   });
 });
 

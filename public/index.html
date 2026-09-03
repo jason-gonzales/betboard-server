@@ -480,7 +480,7 @@ const MOCK_GAMES = {
   ]
 };
 
-let state = { sport:"NFL", detailId:null, detailTab:"odds", liveGamesBySport:{}, connecting:false, teamTrends:{} };
+let state = { sport:"NFL", detailId:null, detailTab:"odds", liveGamesBySport:{}, connecting:false, teamTrends:{}, liveH2H:{} };
 
 // ---- Backend config ----
 // Fill this in once you've deployed betboard-server (see its README).
@@ -579,6 +579,13 @@ async function fetchLiveTrends(){
   return body.teams; // { "New York Yankees": { form, record, trend }, ... }
 }
 
+async function fetchLiveH2H(){
+  const res = await fetch(`${BACKEND_URL}/api/h2h/mlb`);
+  if(!res.ok) throw new Error(`H2H request failed (${res.status})`);
+  const body = await res.json();
+  return body.matchups; // { "Away Team__Home Team": [{date, note}, ...], ... }
+}
+
 async function loadLiveMLB({ silent } = {}){
   if(!BACKEND_URL){
     if(!silent){
@@ -594,9 +601,10 @@ async function loadLiveMLB({ silent } = {}){
   try{
     const games = await fetchLiveOddsFromBackend("mlb");
     state.liveGamesBySport.MLB = games;
-    // Trends come from a separate free endpoint (MLB's own API, not the
-    // Odds API), so a failure here shouldn't block odds from showing.
+    // Trends and H2H come from a separate free endpoint (MLB's own API,
+    // not the Odds API), so a failure here shouldn't block odds from showing.
     try{ state.teamTrends = await fetchLiveTrends(); }catch(e){ /* leave stale/empty, Trends tab falls back to empty state */ }
+    try{ state.liveH2H = await fetchLiveH2H(); }catch(e){ /* leave stale/empty, Research H2H falls back to empty state */ }
     if(!silent){
       state.sport = "MLB";
       document.getElementById("dsHeadline").innerHTML = "You're live.";
@@ -760,10 +768,22 @@ function renderTrends(game){
 
 function renderResearch(game){
   if(game.live){
-    return `<div class="panel-box empty-state">
-      <div class="ico">🔎</div>
-      No research provider connected yet.<br>Head-to-head history, injuries, situational trends, and market signals need a stats/injury feed alongside odds — real games won't get placeholder data here.
-    </div>`;
+    const key = `${game.away}__${game.home}`;
+    const h2h = state.liveH2H[key];
+    return `
+      <div class="panel-box">
+        <div class="sec-label">Head-to-head, last 3</div>
+        ${
+          h2h && h2h.length > 0
+            ? h2h.map(m=>`<div class="h2h-row"><span class="h2h-date">${m.date}</span><span style="text-align:right;">${m.note}</span></div>`).join("")
+            : `<div style="font-size:13px;color:var(--muted);">No recent meetings found between these teams in the last ~1.5 seasons — could be an interleague pairing that rarely plays.</div>`
+        }
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">Real results from MLB's Stats API. No historical odds available, so no ATS/cover info here.</div>
+      </div>
+      <div class="panel-box empty-state">
+        <div class="ico">🔎</div>
+        Injuries, situational (rest/travel), and market signals aren't connected yet.<br>Head-to-head above is real — the rest is still on the list.
+      </div>`;
   }
   const r = game.research;
   return `
