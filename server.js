@@ -145,6 +145,7 @@ async function computeH2H(teamAId, teamBId) {
       const isMatchup = (homeId === teamAId && awayId === teamBId) || (homeId === teamBId && awayId === teamAId);
       if (!isMatchup) continue;
       const homeScore = g.teams.home.score, awayScore = g.teams.away.score;
+      if (typeof homeScore !== "number" || typeof awayScore !== "number") continue; // skip games with incomplete score data (e.g. suspended/oddly-reported entries)
       const homeWon = g.teams.home.isWinner === true;
       meetings.push({
         date: g.officialDate,
